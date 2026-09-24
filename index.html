@@ -160,6 +160,27 @@
   .cv-tips ul{margin:0; padding-left:1.1rem; color:var(--muted); font-size:.8rem; line-height:1.6;}
   .cv-tips.hidden{display:none;}
   @media(max-width:900px){.generated-cv-wrap .cv-preview{position:static;}.generated-cv-layout{grid-template-columns:1fr;}.cv-identity{padding:1.1rem;}.cv-identity h4{margin-top:1rem;}}
+  .interview-chat{padding:0; overflow:hidden;}
+  .interview-chat-head{padding:1rem 1.15rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:1rem; align-items:center;}
+  .interview-chat-head h3{margin:0; font-size:.98rem;}
+  .interview-chat-head p{margin:.2rem 0 0; color:var(--muted); font-size:.78rem;}
+  .interview-status{color:var(--blue-700); background:var(--blue-100); border-radius:999px; padding:.3rem .55rem; font-size:.72rem; font-weight:800; white-space:nowrap;}
+  .chat-log{height:340px; overflow-y:auto; padding:1rem; background:var(--bg); display:flex; flex-direction:column; gap:.75rem;}
+  .chat-message{max-width:82%; padding:.7rem .85rem; border-radius:12px; font-size:.84rem; line-height:1.45;}
+  .chat-message.ai{align-self:flex-start; background:var(--panel); border:1px solid var(--line);}
+  .chat-message.user{align-self:flex-end; background:var(--blue-600); color:#fff;}
+  .chat-message small{display:block; font-size:.68rem; font-weight:800; margin-bottom:.25rem; opacity:.75;}
+  .chat-compose{border-top:1px solid var(--line); padding:1rem; background:var(--panel);}
+  .chat-compose textarea{min-height:78px;}
+  .chat-actions{display:flex; justify-content:space-between; gap:.75rem; align-items:center; margin-top:.7rem;}
+  .chat-hint{font-size:.75rem; color:var(--muted);}
+  .voice-controls{display:flex; gap:.5rem; align-items:center;}
+  .voice-btn{background:var(--panel); color:var(--blue-700); border:1.5px solid var(--blue-100); border-radius:9px; padding:.55rem .7rem; cursor:pointer; font:700 .78rem inherit;}
+  .voice-btn.listening{background:#fff0ed; border-color:#e85d4a; color:#b9382a;}
+  .voice-btn:disabled{cursor:not-allowed; opacity:.55;}
+  .chat-review{margin:1rem; padding:1rem; border:1px solid var(--blue-100); background:var(--blue-50); border-radius:12px;}
+  .chat-review h4{margin:0 0 .45rem; color:var(--blue-700); font-size:.9rem;}
+  .chat-review p{margin:.35rem 0; font-size:.82rem; color:var(--muted);}
   @media(max-width:560px){.cv-input-grid{grid-template-columns:1fr;}.cv-mode{flex-direction:column;}}
 
   .opportunity-toolbar{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem;}
@@ -608,6 +629,129 @@ document.getElementById('feedbackBtn').addEventListener('click', ()=>{
     <p style="margin-top:.6rem; font-size:.82rem; color:var(--muted);">Tip: use the STAR method — Situation, Task, Action, Result.</p>
   `;
   document.getElementById('confMeter').style.width = score + '%';
+});
+
+// ---------- Conversational interview practice ----------
+const interviewRoot = document.querySelector('#interview .card');
+interviewRoot.outerHTML = `
+  <section class="card interview-chat">
+    <div class="interview-chat-head"><div><h3>Interview coach</h3><p>Practise a realistic conversation, one answer at a time.</p></div><span class="interview-status" id="chatStatus">Ready to start</span></div>
+    <div class="chat-compose"><label class="field-label" for="chatRole">Role you are preparing for</label><select id="chatRole"><option value="entry-level role">Entry-level role</option><option value="retail assistant">Retail assistant</option><option value="customer service role">Customer service role</option><option value="admin assistant">Admin assistant</option><option value="learnership">Learnership</option></select><div class="chat-actions"><span class="chat-hint">The coach will ask follow-up questions based on your answers.</span><button class="primary" type="button" id="startInterviewBtn">Start interview</button></div></div>
+    <div class="chat-log" id="chatLog" aria-live="polite"><div class="chat-message ai"><small>AI INTERVIEW COACH</small>Choose a role, then start when you are ready.</div></div>
+    <div class="chat-compose"><label class="field-label" for="chatAnswer">Your answer</label><textarea id="chatAnswer" placeholder="Type your answer as if you are speaking to the interviewer." disabled></textarea><div class="chat-actions"><span class="chat-hint" id="chatTurnHint">Your interview has not started.</span><button class="primary" type="button" id="sendAnswerBtn" disabled>Send answer</button></div></div>
+    <div class="chat-review" id="chatReview" hidden></div>
+  </section>`;
+const voiceButton = document.createElement('button');
+voiceButton.type = 'button';
+voiceButton.id = 'voiceAnswerBtn';
+voiceButton.className = 'voice-btn';
+voiceButton.textContent = 'Use microphone';
+voiceButton.disabled = true;
+document.getElementById('sendAnswerBtn').before(voiceButton);
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let speechRecognition;
+let isListening = false;
+if(!SpeechRecognition){
+  voiceButton.disabled = true;
+  voiceButton.title = 'Speech recognition is not supported in this browser.';
+} else {
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.continuous = false;
+  speechRecognition.interimResults = true;
+  speechRecognition.lang = 'en-ZA';
+  speechRecognition.onstart = () => {
+    isListening = true;
+    voiceButton.classList.add('listening');
+    voiceButton.textContent = 'Listening...';
+    document.getElementById('chatTurnHint').textContent = 'Speak naturally. You can edit the transcript before sending it.';
+  };
+  speechRecognition.onresult = event => {
+    let transcript = '';
+    for(let index = event.resultIndex; index < event.results.length; index++) transcript += event.results[index][0].transcript;
+    document.getElementById('chatAnswer').value = transcript.trim();
+  };
+  speechRecognition.onend = () => {
+    isListening = false;
+    voiceButton.classList.remove('listening');
+    voiceButton.textContent = 'Use microphone';
+    if(document.getElementById('chatAnswer').value.trim()) document.getElementById('chatTurnHint').textContent = 'Review your transcript, then send your answer.';
+  };
+  speechRecognition.onerror = () => {
+    document.getElementById('chatTurnHint').textContent = 'I could not hear that. Check microphone access and try again.';
+  };
+  voiceButton.addEventListener('click', () => {
+    if(document.getElementById('chatAnswer').disabled) return;
+    if(isListening) speechRecognition.stop();
+    else speechRecognition.start();
+  });
+}
+const interviewQuestions = [
+  role => `Thanks for joining me today. To begin, please tell me about yourself and why you are interested in a ${role}.`,
+  role => `What strengths would you bring to this ${role}, and can you give a real example of one?`,
+  () => 'Tell me about a time you solved a problem, helped someone, or worked as part of a team. What was the result?',
+  () => 'What would you do if you were unsure how to complete a task at work?',
+  () => 'That is all my questions. What question would you ask the interviewer about the role or team?'
+];
+let chatTurn = -1;
+let chatAnswers = [];
+function addChatMessage(kind, text){
+  const message = document.createElement('div');
+  message.className = `chat-message ${kind}`;
+  message.innerHTML = `<small>${kind === 'ai' ? 'AI INTERVIEW COACH' : 'YOU'}</small>${escapeHtml(text)}`;
+  const log = document.getElementById('chatLog');
+  log.appendChild(message);
+  log.scrollTop = log.scrollHeight;
+}
+function askNextQuestion(){
+  chatTurn++;
+  const role = document.getElementById('chatRole').value;
+  if(chatTurn >= interviewQuestions.length){ finishInterview(); return; }
+  addChatMessage('ai', interviewQuestions[chatTurn](role));
+  document.getElementById('chatStatus').textContent = `Question ${chatTurn + 1} of ${interviewQuestions.length}`;
+  document.getElementById('chatTurnHint').textContent = 'Use a specific example and explain what you did.';
+}
+function finishInterview(){
+  const combined = chatAnswers.join(' ').toLowerCase();
+  const strengths = [];
+  const nextSteps = [];
+  if(chatAnswers.length >= 4) strengths.push('You completed a full interview conversation and stayed engaged across several topics.');
+  if(/\b(i|my)\b/.test(combined)) strengths.push('You used personal ownership language, which helps an interviewer understand your contribution.');
+  if(/result|improved|helped|learned|completed|solved/.test(combined)) strengths.push('You included evidence of outcomes in your answers.');
+  if(!/result|improved|helped|learned|completed|solved/.test(combined)) nextSteps.push('End one or two answers with a clear result or what you learned.');
+  if(combined.split(/\s+/).length < 90) nextSteps.push('Add a little more detail to each answer: situation, action and result.');
+  if(!nextSteps.length) nextSteps.push('Practise saying these answers aloud so they sound natural and confident.');
+  document.getElementById('chatAnswer').disabled = true;
+  document.getElementById('sendAnswerBtn').disabled = true;
+  voiceButton.disabled = true;
+  if(isListening) speechRecognition.stop();
+  document.getElementById('chatStatus').textContent = 'Session complete';
+  document.getElementById('chatTurnHint').textContent = 'Start a new interview to practise another role.';
+  const review = document.getElementById('chatReview');
+  review.hidden = false;
+  review.innerHTML = `<h4>Session review</h4><p><strong>What worked:</strong> ${strengths.join(' ') || 'You showed up and practised, which is the first step.'}</p><p><strong>Focus next:</strong> ${nextSteps.join(' ')}</p>`;
+  document.getElementById('progressInterview').textContent = 'Interview practice: ' + (interviewSessions + 1) + ' session' + (interviewSessions ? 's' : '');
+  interviewSessions++;
+}
+document.getElementById('startInterviewBtn').addEventListener('click', () => {
+  chatTurn = -1; chatAnswers = [];
+  document.getElementById('chatLog').innerHTML = '';
+  document.getElementById('chatReview').hidden = true;
+  document.getElementById('chatAnswer').disabled = false;
+  document.getElementById('sendAnswerBtn').disabled = false;
+  if(SpeechRecognition) voiceButton.disabled = false;
+  document.getElementById('chatAnswer').value = '';
+  askNextQuestion();
+  document.getElementById('chatAnswer').focus();
+});
+document.getElementById('sendAnswerBtn').addEventListener('click', () => {
+  const answer = document.getElementById('chatAnswer').value.trim();
+  if(!answer) return;
+  addChatMessage('user', answer);
+  chatAnswers.push(answer);
+  document.getElementById('chatAnswer').value = '';
+  const feedback = answer.split(/\s+/).length < 20 ? 'Good start. For the next answer, add a little more detail so I can hear your thought process.' : 'Thank you. I can hear a clear example in that answer. Let us build on it.';
+  addChatMessage('ai', feedback);
+  askNextQuestion();
 });
 
 // ---------- Opportunities ----------
