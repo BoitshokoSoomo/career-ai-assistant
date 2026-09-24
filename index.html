@@ -140,6 +140,26 @@
   .cv-status{min-height:1.1rem; margin-bottom:0;}
   .preview-label{color:var(--blue-700); font-size:.72rem; font-weight:800; text-transform:uppercase; margin:0 0 .5rem;}
   .cv-contact{color:var(--muted); font-size:.78rem; margin:.45rem 0 .8rem; line-height:1.45;}
+  .generated-cv-wrap{min-width:0;}
+  .generated-cv-wrap .cv-preview{padding:0; overflow:hidden; position:sticky; top:1.4rem;}
+  .generated-cv-layout{display:grid; grid-template-columns:190px minmax(0,1fr); min-height:390px;}
+  .cv-identity{background:#1264cf; color:#fff; padding:1.35rem 1.15rem;}
+  .cv-identity .cv-name{color:#fff; font-size:1.12rem; line-height:1.25;}
+  .cv-identity .cv-role,.cv-identity .cv-contact{color:#e5efff;}
+  .cv-identity .cv-contact{font-size:.76rem; word-break:break-word;}
+  .cv-identity h4{color:#c9dcff; margin-top:1.4rem;}
+  .cv-skill-list{display:flex; flex-wrap:wrap; gap:.35rem;}
+  .cv-skill-list .tag{background:#2d7add; color:#fff; border-radius:999px;}
+  .cv-document{padding:1.35rem 1.7rem; background:var(--panel);}
+  .cv-document h4{margin-top:0; margin-bottom:.55rem;}
+  .cv-document h4:not(:first-child){margin-top:1.45rem;}
+  .cv-document p,.cv-document li{font-size:.84rem; line-height:1.55;}
+  .cv-document ul{margin:.25rem 0;}
+  .cv-tips{margin-top:1rem; border:1px solid var(--line); border-radius:14px; background:var(--panel); padding:1rem 1.25rem;}
+  .cv-tips h3{font-size:.9rem; margin:0 0 .55rem;}
+  .cv-tips ul{margin:0; padding-left:1.1rem; color:var(--muted); font-size:.8rem; line-height:1.6;}
+  .cv-tips.hidden{display:none;}
+  @media(max-width:900px){.generated-cv-wrap .cv-preview{position:static;}.generated-cv-layout{grid-template-columns:1fr;}.cv-identity{padding:1.1rem;}.cv-identity h4{margin-top:1rem;}}
   @media(max-width:560px){.cv-input-grid{grid-template-columns:1fr;}.cv-mode{flex-direction:column;}}
 
   .opportunity-toolbar{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem;}
@@ -312,13 +332,15 @@
           <div class="q-block"><label class="field-label" for="cvJobDescription">Job description or key requirements (optional)</label><textarea id="cvJobDescription" placeholder="Paste the job advert here for a more targeted CV."></textarea></div>
           <button class="primary" type="submit" id="generateCvBtn">Generate my CV</button><p class="cv-status" id="cvStatus" aria-live="polite"></p>
         </form>
-        <section class="cv-preview" id="generatedCv" aria-live="polite">
-          <p class="preview-label">Generated CV</p><div class="cv-name" id="newCvName">Your name</div><div class="cv-role" id="newCvRole">Your target role will appear here</div><div class="cv-contact" id="newCvContact"></div>
-          <h4>Professional Profile</h4><div id="newCvProfile"><p class="empty">Complete your details and choose Generate my CV.</p></div>
-          <h4>Experience</h4><div id="newCvExperience"><p class="empty">Your experience will appear here.</p></div>
-          <h4>Education</h4><div id="newCvEducation"><p class="empty">Your education will appear here.</p></div>
-          <h4>Skills</h4><div id="newCvSkills"><p class="empty">Your skills will appear here.</p></div>
-        </section>
+        <div class="generated-cv-wrap">
+          <section class="cv-preview" id="generatedCv" aria-live="polite">
+            <div class="generated-cv-layout">
+              <aside class="cv-identity"><p class="preview-label">Generated CV</p><div class="cv-name" id="newCvName">Your name</div><div class="cv-role" id="newCvRole">Your target role</div><div class="cv-contact" id="newCvContact">Add your contact details</div><h4>Skills</h4><div class="cv-skill-list" id="newCvSkills"><span class="tag">Your skills</span></div></aside>
+              <div class="cv-document"><h4>Profile</h4><div id="newCvProfile"><p class="empty">Complete your details and choose Generate my CV.</p></div><h4>Experience</h4><div id="newCvExperience"><p class="empty">Your experience will appear here.</p></div><h4>Education</h4><div id="newCvEducation"><p class="empty">Your education will appear here.</p></div></div>
+            </div>
+          </section>
+          <aside class="cv-tips hidden" id="cvTips"><h3>&#128196; Tips to make it stronger</h3><ul id="cvTipsList"></ul></aside>
+        </div>
       </div>
       <div class="legacy-cv-wrap">
         <div>
@@ -540,7 +562,15 @@ cvForm.addEventListener('submit', event => {
   document.getElementById('newCvProfile').innerHTML = `<p>${escapeHtml(profile)}</p>`;
   document.getElementById('newCvExperience').innerHTML = `<ul>${asList(experience).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
   document.getElementById('newCvEducation').innerHTML = `<ul>${asList(education).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-  document.getElementById('newCvSkills').innerHTML = skills.length ? `<div class="tag-row">${skills.map(item => `<span class="tag">${escapeHtml(item)}</span>`).join('')}</div>` : '<p class="empty">Add skills and tools to strengthen this section.</p>';
+  document.getElementById('newCvSkills').innerHTML = skills.length ? skills.map(item => `<span class="tag">${escapeHtml(item)}</span>`).join('') : '<span class="tag">Add skills</span>';
+  const tips = [];
+  if(!get('cvPhone') || !get('cvEmail') || !get('cvLocation')) tips.push('Add your phone number, email address and location so employers can contact you.');
+  if(!get('cvExperienceInput') && !source) tips.push('Add projects, volunteering or responsibilities to give the experience section proof of your ability.');
+  if(!get('cvJobDescription')) tips.push('Paste a job advert to tailor your profile and skills to the role.');
+  if(skills.length < 3) tips.push('Include at least three tools or skills that are relevant to the job you want.');
+  const tipsBox = document.getElementById('cvTips');
+  document.getElementById('cvTipsList').innerHTML = (tips.length ? tips : ['This CV has the essentials. Add measurable results wherever possible.']).map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
+  tipsBox.classList.remove('hidden');
   document.getElementById('generatedCv').scrollIntoView({behavior:'smooth', block:'start'});
 });
 
