@@ -128,6 +128,19 @@
   .cv-preview .empty{color:var(--muted); font-size:.85rem; font-style:italic;}
   .cv-name{font-size:1.15rem; font-weight:800;}
   .cv-role{color:var(--muted); font-size:.85rem; margin-top:2px;}
+  .legacy-cv-wrap{display:none;}
+  .cv-form{min-width:0;}
+  .cv-input-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 1rem;}
+  .cv-mode{display:flex; gap:.5rem; margin-bottom:1rem;}
+  .cv-mode-btn{flex:1; padding:.6rem; border:1.5px solid var(--line); border-radius:9px; background:var(--panel); color:var(--muted); cursor:pointer; font:700 .78rem inherit;}
+  .cv-mode-btn.active{background:var(--blue-100); border-color:var(--blue-600); color:var(--blue-700);}
+  .existing-cv-panel{background:var(--blue-50); border:1px solid var(--blue-100); border-radius:12px; padding:1rem; margin-bottom:1rem;}
+  .existing-cv-panel input[type=file]{width:100%; color:var(--muted); font:inherit; font-size:.8rem; margin-bottom:.65rem;}
+  .upload-note,.cv-status{font-size:.76rem; color:var(--muted); margin:.45rem 0 .75rem; line-height:1.4;}
+  .cv-status{min-height:1.1rem; margin-bottom:0;}
+  .preview-label{color:var(--blue-700); font-size:.72rem; font-weight:800; text-transform:uppercase; margin:0 0 .5rem;}
+  .cv-contact{color:var(--muted); font-size:.78rem; margin:.45rem 0 .8rem; line-height:1.45;}
+  @media(max-width:560px){.cv-input-grid{grid-template-columns:1fr;}.cv-mode{flex-direction:column;}}
 
   .opportunity-toolbar{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem;}
   .opportunity-search{position:relative;}
@@ -278,6 +291,36 @@
       <p class="section-sub">Answer 5 simple questions — we'll turn your real experience into professional CV points.</p>
 
       <div class="cv-wrap">
+        <form id="cvForm" class="cv-form">
+          <div class="cv-mode" role="group" aria-label="CV starting point"><button class="cv-mode-btn active" type="button" data-cv-mode="new">Create a new CV</button><button class="cv-mode-btn" type="button" data-cv-mode="existing">Improve my CV</button></div>
+          <div id="existingCvPanel" class="existing-cv-panel" hidden>
+            <label class="field-label" for="cvUpload">Upload your existing CV</label><input id="cvUpload" type="file" accept=".pdf,.doc,.docx,.txt,.md">
+            <p class="upload-note" id="uploadStatus">PDF, Word, text and Markdown files are ready for AI processing when the app is deployed.</p>
+            <label class="field-label" for="existingCvText">Or paste your existing CV text</label><textarea id="existingCvText" placeholder="Paste your existing CV here to use its work history and skills."></textarea>
+          </div>
+          <div class="cv-input-grid">
+            <div class="q-block"><label class="field-label" for="cvFullName">Full name</label><input id="cvFullName" type="text" placeholder="e.g. Thando Mokoena"></div>
+            <div class="q-block"><label class="field-label" for="cvPhone">Phone number</label><input id="cvPhone" type="text" placeholder="e.g. 071 234 5678"></div>
+            <div class="q-block"><label class="field-label" for="cvEmail">Email address</label><input id="cvEmail" type="text" placeholder="e.g. thando@email.com"></div>
+            <div class="q-block"><label class="field-label" for="cvLocation">Location</label><input id="cvLocation" type="text" placeholder="e.g. Pretoria, Gauteng"></div>
+          </div>
+          <div class="q-block"><label class="field-label" for="cvTargetRole">Target job or learnership</label><input id="cvTargetRole" type="text" placeholder="e.g. Retail assistant or admin learnership"></div>
+          <div class="q-block"><label class="field-label" for="cvProfile">Tell us about yourself and the role you want</label><textarea id="cvProfile" placeholder="Include your strengths, interests and the kind of work you want."></textarea></div>
+          <div class="q-block"><label class="field-label" for="cvExperienceInput">Work experience, volunteering, projects or responsibilities</label><textarea id="cvExperienceInput" placeholder="e.g. Helped at my aunt's shop, tracked stock, served customers and handled cash."></textarea></div>
+          <div class="q-block"><label class="field-label" for="cvEducation">Education and certificates</label><textarea id="cvEducation" placeholder="e.g. Matric, 2024. Basic Excel certificate, 2025."></textarea></div>
+          <div class="q-block"><label class="field-label" for="cvSkills">Skills and tools</label><input id="cvSkills" type="text" placeholder="e.g. Customer service, Excel, communication"></div>
+          <div class="q-block"><label class="field-label" for="cvJobDescription">Job description or key requirements (optional)</label><textarea id="cvJobDescription" placeholder="Paste the job advert here for a more targeted CV."></textarea></div>
+          <button class="primary" type="submit" id="generateCvBtn">Generate my CV</button><p class="cv-status" id="cvStatus" aria-live="polite"></p>
+        </form>
+        <section class="cv-preview" id="generatedCv" aria-live="polite">
+          <p class="preview-label">Generated CV</p><div class="cv-name" id="newCvName">Your name</div><div class="cv-role" id="newCvRole">Your target role will appear here</div><div class="cv-contact" id="newCvContact"></div>
+          <h4>Professional Profile</h4><div id="newCvProfile"><p class="empty">Complete your details and choose Generate my CV.</p></div>
+          <h4>Experience</h4><div id="newCvExperience"><p class="empty">Your experience will appear here.</p></div>
+          <h4>Education</h4><div id="newCvEducation"><p class="empty">Your education will appear here.</p></div>
+          <h4>Skills</h4><div id="newCvSkills"><p class="empty">Your skills will appear here.</p></div>
+        </section>
+      </div>
+      <div class="legacy-cv-wrap">
         <div>
           <div class="q-block">
             <label class="field-label">1. What informal work, chores or volunteering have you done?</label>
@@ -455,6 +498,50 @@ document.getElementById('buildCvBtn').addEventListener('click', ()=>{
   toolBox.innerHTML = tools.length ? '<ul>'+tools.map(t=>`<li>${t}</li>`).join('')+'</ul>' : '<p class="empty">—</p>';
   document.getElementById('cvRole').textContent = q5 && q5.trim() ? 'Applying for: ' + q5 : 'First-time job seeker';
   document.getElementById('progressCv').textContent = 'CV: ' + (bullets.length ? bullets.length + ' points ready' : 'Not started');
+});
+
+// ---------- CV generation workflow ----------
+const cvForm = document.getElementById('cvForm');
+const existingCvPanel = document.getElementById('existingCvPanel');
+const uploadStatus = document.getElementById('uploadStatus');
+let uploadedCvText = '';
+function escapeHtml(value){return String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
+function asList(value){return value.split(/\n|,|;/).map(item => item.trim()).filter(Boolean);}
+document.querySelectorAll('.cv-mode-btn').forEach(button => button.addEventListener('click', () => {
+  const existing = button.dataset.cvMode === 'existing';
+  existingCvPanel.hidden = !existing;
+  document.querySelectorAll('.cv-mode-btn').forEach(item => item.classList.toggle('active', item === button));
+}));
+document.getElementById('cvUpload').addEventListener('change', event => {
+  const file = event.target.files[0];
+  if(!file) return;
+  uploadStatus.textContent = `${file.name} selected. Its contents will be analysed by the AI service after deployment.`;
+  if(file.type === 'text/plain' || /\.(txt|md)$/i.test(file.name)){
+    const reader = new FileReader();
+    reader.onload = () => { uploadedCvText = reader.result; document.getElementById('existingCvText').value = uploadedCvText; };
+    reader.readAsText(file);
+  }
+});
+cvForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const get = id => document.getElementById(id).value.trim();
+  const name = get('cvFullName') || 'Your name';
+  const role = get('cvTargetRole') || 'Entry-level job seeker';
+  const profile = get('cvProfile') || `Motivated candidate seeking an opportunity as a ${role.toLowerCase()}, ready to learn, contribute and grow.`;
+  const source = get('existingCvText') || uploadedCvText;
+  const experience = get('cvExperienceInput') || source || 'Add work experience, volunteering, projects or responsibilities to strengthen this section.';
+  const education = get('cvEducation') || 'Add your education and certificates.';
+  const skills = asList(get('cvSkills'));
+  const contact = [get('cvPhone'), get('cvEmail'), get('cvLocation')].filter(Boolean).map(escapeHtml).join(' | ');
+  document.getElementById('cvStatus').textContent = 'Your CV draft is ready to review.';
+  document.getElementById('newCvName').textContent = name;
+  document.getElementById('newCvRole').textContent = role;
+  document.getElementById('newCvContact').textContent = contact;
+  document.getElementById('newCvProfile').innerHTML = `<p>${escapeHtml(profile)}</p>`;
+  document.getElementById('newCvExperience').innerHTML = `<ul>${asList(experience).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+  document.getElementById('newCvEducation').innerHTML = `<ul>${asList(education).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+  document.getElementById('newCvSkills').innerHTML = skills.length ? `<div class="tag-row">${skills.map(item => `<span class="tag">${escapeHtml(item)}</span>`).join('')}</div>` : '<p class="empty">Add skills and tools to strengthen this section.</p>';
+  document.getElementById('generatedCv').scrollIntoView({behavior:'smooth', block:'start'});
 });
 
 // ---------- Interview Practice ----------
