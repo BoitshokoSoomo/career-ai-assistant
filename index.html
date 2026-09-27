@@ -223,6 +223,38 @@
 
   .path-card{border-left:4px solid var(--blue-600);}
 
+  .career-heading{margin-bottom:1.5rem;}
+  .career-eyebrow{margin:0 0 .65rem; color:var(--blue-700); font-size:.74rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em;}
+  .career-heading .section-title{font-size:2rem;}
+  .career-heading .section-sub{font-size:.95rem; margin:.45rem 0 0;}
+  .career-layout{display:grid; grid-template-columns:minmax(290px,.8fr) minmax(0,1.2fr); gap:1.1rem; align-items:stretch;}
+  .career-profile,.career-plan{padding:1.4rem; border-radius:16px;}
+  .career-profile h2{font-size:1.05rem; margin:0 0 .25rem;}
+  .career-intro{margin:0 0 1.15rem; color:var(--muted); font-size:.84rem;}
+  .career-field{margin-bottom:.9rem;}
+  .career-field label{font-size:.78rem; font-weight:700; color:var(--text); display:block; margin-bottom:.4rem;}
+  .career-field input{min-height:46px; background:var(--panel); border-radius:10px;}
+  .career-field input:focus{outline:2px solid var(--blue-600); outline-offset:1px;}
+  .skill-options{margin:.35rem 0 1rem;}
+  .skill-options summary{color:var(--blue-700); font-size:.78rem; font-weight:700; cursor:pointer;}
+  .skill-options .chip-row{margin-top:.65rem;}
+  .skill-options .chip{font-size:.75rem; padding:.4rem .65rem;}
+  .career-submit{width:100%; min-height:46px;}
+  .career-plan{min-height:490px; display:flex; flex-direction:column;}
+  .career-plan h2{margin:0; color:var(--blue-700); font-size:.83rem;}
+  .plan-empty{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem 1rem; color:var(--muted);}
+  .plan-empty-icon{font-size:2rem; color:var(--blue-600); line-height:1; margin-bottom:.9rem;}
+  .plan-empty p{margin:.2rem 0; font-size:.9rem;}
+  .plan-empty .plan-hint{font-size:.82rem;}
+  .plan-context{margin:.8rem 0; color:var(--muted); font-size:.82rem; line-height:1.45;}
+  .path-result-list{display:grid; gap:.7rem;}
+  .path-result{border:1px solid var(--line); border-left:4px solid var(--blue-600); border-radius:10px; padding:.9rem 1rem;}
+  .path-result-label{margin:0 0 .25rem; color:var(--blue-700); text-transform:uppercase; font-size:.68rem; font-weight:800;}
+  .path-result h3{margin:0 0 .3rem; font-size:.98rem;}
+  .path-result p{margin:0; color:var(--muted); font-size:.82rem; line-height:1.45;}
+  .path-result .path-next{margin-top:.55rem; color:var(--text);}
+  @media(max-width:820px){.career-layout{grid-template-columns:1fr;}.career-plan{min-height:340px;}}
+
   footer.hint{margin-top:2rem; font-size:.78rem; color:var(--muted); text-align:center;}
 
   @media(max-width:760px){
@@ -305,25 +337,55 @@
 
     <!-- CAREER PATH -->
     <section class="view" id="career-path">
-      <p class="section-title">My Career Path</p>
-      <p class="section-sub">Tell us what you're good at we'll match you to realistic entry-level roles and the one skill to work on next.</p>
+      <header class="career-heading">
+        <p class="career-eyebrow">Personalised direction</p>
+        <h1 class="section-title">My career path</h1>
+        <p class="section-sub">Find realistic roles that match what you have, then turn the advice into clear actions.</p>
+      </header>
 
-      <div class="card">
-        <label class="field-label">Select what applies to you</label>
-        <div class="chip-row" id="skillChips">
-          <span class="chip" data-skill="customer">Talking to people / customer service</span>
-          <span class="chip" data-skill="excel">Computers / Excel</span>
-          <span class="chip" data-skill="admin">Organising / admin</span>
-          <span class="chip" data-skill="retail">Selling / retail / stock</span>
-          <span class="chip" data-skill="manual">Practical / hands-on work</span>
-          <span class="chip" data-skill="care">Caring for people</span>
-        </div>
-        <div style="margin-top:1rem;">
-          <button class="primary" id="findPathBtn">Find My Path</button>
-        </div>
+      <div class="career-layout">
+        <form class="card career-profile" id="careerProfileForm">
+          <h2>Build your profile</h2>
+          <p class="career-intro">Your answers shape your recommendations.</p>
+          <div class="career-field">
+            <label for="careerQualification">Highest qualification</label>
+            <input id="careerQualification" type="text" placeholder="e.g. Matric, Grade 11, NQF 4">
+          </div>
+          <div class="career-field">
+            <label for="careerSkills">Skills you already have</label>
+            <input id="careerSkills" type="text" placeholder="e.g. customer service, Excel, stock taking">
+            <details class="skill-options">
+              <summary>Choose skills from a list</summary>
+              <div class="chip-row" id="skillChips">
+                <span class="chip" data-skill="customer">Customer service</span>
+                <span class="chip" data-skill="excel">Computers / Excel</span>
+                <span class="chip" data-skill="admin">Organising / admin</span>
+                <span class="chip" data-skill="retail">Selling / retail / stock</span>
+                <span class="chip" data-skill="manual">Practical / hands-on</span>
+                <span class="chip" data-skill="care">Caring for people</span>
+              </div>
+            </details>
+          </div>
+          <div class="career-field">
+            <label for="careerInterests">Interests or work you enjoy</label>
+            <input id="careerInterests" type="text" placeholder="e.g. helping people, working with data">
+          </div>
+          <div class="career-field">
+            <label for="careerLocation">Town, city or country</label>
+            <input id="careerLocation" type="text" placeholder="e.g. Hammanskraal">
+          </div>
+          <button class="primary career-submit" id="findPathBtn" type="submit">Generate my career path</button>
+        </form>
+
+        <section class="card career-plan" aria-live="polite" aria-labelledby="careerPlanTitle">
+          <h2 id="careerPlanTitle">Your action plan</h2>
+          <div id="pathResults" class="plan-empty">
+            <span class="plan-empty-icon" aria-hidden="true">◎</span>
+            <p>Your career plan will appear here.</p>
+            <p class="plan-hint">It will include matching roles, skill gaps and an action plan.</p>
+          </div>
+        </section>
       </div>
-
-      <div id="pathResults" style="margin-top:1.2rem;"></div>
     </section>
 
     <!-- CV BUILDER -->
@@ -490,20 +552,41 @@ const paths = {
 };
 const chips = document.querySelectorAll('#skillChips .chip');
 chips.forEach(c=>c.addEventListener('click', ()=>c.classList.toggle('sel')));
-document.getElementById('findPathBtn').addEventListener('click', ()=>{
-  const selected = [...chips].filter(c=>c.classList.contains('sel')).map(c=>c.dataset.skill);
+document.getElementById('careerProfileForm').addEventListener('submit', event=>{
+  event.preventDefault();
+  const typedSkills = document.getElementById('careerSkills').value.trim();
+  const interests = document.getElementById('careerInterests').value.trim();
+  const profileText = `${typedSkills} ${interests}`.toLowerCase();
+  const inferred = {
+    customer:/customer|people|communicat|talk|service|call/.test(profileText),
+    excel:/excel|computer|data|spreadsheet|digital/.test(profileText),
+    admin:/organis|admin|office|detail|record/.test(profileText),
+    retail:/retail|sell|stock|shop|cash|till/.test(profileText),
+    manual:/practical|hands.on|manual|repair|warehouse|maint|build/.test(profileText),
+    care:/care|child|patient|health|support/.test(profileText)
+  };
+  const selected = [...new Set([
+    ...[...chips].filter(c=>c.classList.contains('sel')).map(c=>c.dataset.skill),
+    ...Object.keys(inferred).filter(skill=>inferred[skill])
+  ])];
   const box = document.getElementById('pathResults');
   if(selected.length===0){
-    box.innerHTML = '<p class="section-sub">Select at least one skill above to see your matches.</p>';
+    box.className = 'plan-empty';
+    box.innerHTML = '<span class="plan-empty-icon" aria-hidden="true">◎</span><p>Add a skill or choose one from the list to see your matches.</p><p class="plan-hint">Try examples like customer service, Excel, retail or caring.</p>';
     return;
   }
   const matches = selected.slice(0,3).map(s=>paths[s]);
-  box.innerHTML = matches.map(m=>`
-    <div class="card path-card" style="margin-bottom:.8rem;">
-      <h3>${m.title}</h3>
-      <p>${m.desc}</p>
-      <p style="margin-top:.5rem;"><strong style="color:var(--blue-700);">Next skill to learn:</strong> ${m.next}</p>
-    </div>`).join('');
+  const qualification = document.getElementById('careerQualification').value.trim();
+  const location = document.getElementById('careerLocation').value.trim();
+  const context = [qualification, location].filter(Boolean).map(value=>value.replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])));
+  box.className = '';
+  box.innerHTML = `${context.length ? `<p class="plan-context">${context.join(' · ')}${context.length===2 ? ' · ' : ''}Here are roles to explore based on your profile.</p>` : '<p class="plan-context">Here are roles to explore based on your profile.</p>'}<div class="path-result-list">${matches.map((match,index)=>`
+    <article class="path-result">
+      <p class="path-result-label">${index===0 ? 'Best match' : 'Also worth exploring'}</p>
+      <h3>${match.title}</h3>
+      <p>${match.desc}</p>
+      <p class="path-next"><strong>Next step:</strong> ${match.next}</p>
+    </article>`).join('')}</div>`;
   document.getElementById('progressPath').textContent = 'Career path: ' + matches.length + ' match' + (matches.length>1?'es':'') + ' found';
 });
 
