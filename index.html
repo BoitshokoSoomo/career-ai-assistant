@@ -159,6 +159,18 @@
   .cv-tips h3{font-size:.9rem; margin:0 0 .55rem;}
   .cv-tips ul{margin:0; padding-left:1.1rem; color:var(--muted); font-size:.8rem; line-height:1.6;}
   .cv-tips.hidden{display:none;}
+  .cv-export-actions{display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1rem;}
+  .cv-export-actions button:disabled{opacity:.55; cursor:not-allowed;}
+  @media print{
+    body{background:#fff !important;}
+    .sidebar,.topbar,.cv-form,.cv-tips,footer,.nav-item{display:none !important;}
+    main{padding:0 !important;}
+    .view{display:none !important;}
+    #cv-builder{display:block !important;}
+    .generated-cv-wrap .cv-preview{position:static !important; border:none !important; box-shadow:none !important;}
+    .generated-cv-layout{min-height:auto !important;}
+    .cv-export-actions{display:none !important;}
+  }
   @media(max-width:900px){.generated-cv-wrap .cv-preview{position:static;}.generated-cv-layout{grid-template-columns:1fr;}.cv-identity{padding:1.1rem;}.cv-identity h4{margin-top:1rem;}}
   .interview-chat{padding:0; overflow:hidden;}
   .interview-chat-head{padding:1rem 1.15rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:1rem; align-items:center;}
@@ -181,6 +193,14 @@
   .chat-review{margin:1rem; padding:1rem; border:1px solid var(--blue-100); background:var(--blue-50); border-radius:12px;}
   .chat-review h4{margin:0 0 .45rem; color:var(--blue-700); font-size:.9rem;}
   .chat-review p{margin:.35rem 0; font-size:.82rem; color:var(--muted);}
+  .review-score{display:flex; align-items:center; gap:.85rem; margin:.8rem 0;}
+  .review-score strong{display:grid; place-items:center; width:52px; height:52px; border-radius:50%; color:#fff; background:var(--blue-600); font-size:.92rem;}
+  .review-score span{font-size:.8rem; color:var(--muted); line-height:1.4;}
+  .review-columns{display:grid; grid-template-columns:1fr 1fr; gap:.8rem; margin-top:.8rem;}
+  .review-columns div{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.7rem;}
+  .review-columns h5{margin:0 0 .35rem; font-size:.78rem; color:var(--text);}
+  .review-columns ul{margin:0; padding-left:1rem; font-size:.76rem; color:var(--muted); line-height:1.5;}
+  @media(max-width:560px){.review-columns{grid-template-columns:1fr;}}
   @media(max-width:560px){.cv-input-grid{grid-template-columns:1fr;}.cv-mode{flex-direction:column;}}
 
   .opportunity-toolbar{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:1rem;}
@@ -423,6 +443,7 @@
             </div>
           </section>
           <aside class="cv-tips hidden" id="cvTips"><h3>&#128196; Tips to make it stronger</h3><ul id="cvTipsList"></ul></aside>
+          <div class="cv-export-actions"><button class="primary" type="button" id="downloadCvBtn" disabled>Download CV (.doc)</button><button class="ghost" type="button" id="printCvBtn" disabled>Save as PDF</button></div>
         </div>
       </div>
       <div class="legacy-cv-wrap">
@@ -630,6 +651,8 @@ document.getElementById('buildCvBtn').addEventListener('click', ()=>{
 const cvForm = document.getElementById('cvForm');
 const existingCvPanel = document.getElementById('existingCvPanel');
 const uploadStatus = document.getElementById('uploadStatus');
+const downloadCvBtn = document.getElementById('downloadCvBtn');
+const printCvBtn = document.getElementById('printCvBtn');
 let uploadedCvText = '';
 function escapeHtml(value){return String(value || '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));}
 function asList(value){return value.split(/\n|,|;/).map(item => item.trim()).filter(Boolean);}
@@ -641,25 +664,45 @@ document.querySelectorAll('.cv-mode-btn').forEach(button => button.addEventListe
 document.getElementById('cvUpload').addEventListener('change', event => {
   const file = event.target.files[0];
   if(!file) return;
-  uploadStatus.textContent = `${file.name} selected. Its contents will be analysed by the AI service after deployment.`;
+  uploadStatus.textContent = `${file.name} selected. Paste its text below if it is not a text file so it can be used in the CV.`;
   if(file.type === 'text/plain' || /\.(txt|md)$/i.test(file.name)){
     const reader = new FileReader();
     reader.onload = () => { uploadedCvText = reader.result; document.getElementById('existingCvText').value = uploadedCvText; };
     reader.readAsText(file);
   }
 });
-cvForm.addEventListener('submit', event => {
+cvForm.addEventListener('submit', async event => {
   event.preventDefault();
   const get = id => document.getElementById(id).value.trim();
   const name = get('cvFullName') || 'Your name';
   const role = get('cvTargetRole') || 'Entry-level job seeker';
-  const profile = get('cvProfile') || `Motivated candidate seeking an opportunity as a ${role.toLowerCase()}, ready to learn, contribute and grow.`;
+  let profile = get('cvProfile') || `Motivated candidate seeking an opportunity as a ${role.toLowerCase()}, ready to learn, contribute and grow.`;
   const source = get('existingCvText') || uploadedCvText;
-  const experience = get('cvExperienceInput') || source || 'Add work experience, volunteering, projects or responsibilities to strengthen this section.';
-  const education = get('cvEducation') || 'Add your education and certificates.';
-  const skills = asList(get('cvSkills'));
+  let experience = get('cvExperienceInput') || source || 'Add work experience, volunteering, projects or responsibilities to strengthen this section.';
+  let education = get('cvEducation') || 'Add your education and certificates.';
+  let skills = asList(get('cvSkills'));
   const contact = [get('cvPhone'), get('cvEmail'), get('cvLocation')].filter(Boolean).map(escapeHtml).join(' | ');
-  document.getElementById('cvStatus').textContent = 'Your CV draft is ready to review.';
+  const generateButton = document.getElementById('generateCvBtn');
+  let aiTips = [];
+  generateButton.disabled = true;
+  generateButton.textContent = 'Generating CV...';
+  document.getElementById('cvStatus').textContent = 'Creating your AI CV...';
+  try{
+    const aiResponse = await fetch('/api/generate-cv', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, role, contact, profile, experience, education, skills, jobDescription:get('cvJobDescription'), existingCv:source})});
+    if(!aiResponse.ok) throw new Error('AI unavailable');
+    const aiCv = await aiResponse.json();
+    profile = aiCv.profile || profile;
+    experience = Array.isArray(aiCv.experience) ? aiCv.experience.join('\n') : experience;
+    education = Array.isArray(aiCv.education) ? aiCv.education.join('\n') : education;
+    skills = Array.isArray(aiCv.skills) && aiCv.skills.length ? aiCv.skills : skills;
+    aiTips = Array.isArray(aiCv.tips) ? aiCv.tips : [];
+    document.getElementById('cvStatus').textContent = 'Your AI-generated CV is ready to review and download.';
+  } catch {
+    document.getElementById('cvStatus').textContent = 'Your CV draft is ready to review. Connect the deployed AI service for tailored rewrites.';
+  } finally {
+    generateButton.disabled = false;
+    generateButton.textContent = 'Generate my CV';
+  }
   document.getElementById('newCvName').textContent = name;
   document.getElementById('newCvRole').textContent = role;
   document.getElementById('newCvContact').textContent = contact;
@@ -673,10 +716,32 @@ cvForm.addEventListener('submit', event => {
   if(!get('cvJobDescription')) tips.push('Paste a job advert to tailor your profile and skills to the role.');
   if(skills.length < 3) tips.push('Include at least three tools or skills that are relevant to the job you want.');
   const tipsBox = document.getElementById('cvTips');
-  document.getElementById('cvTipsList').innerHTML = (tips.length ? tips : ['This CV has the essentials. Add measurable results wherever possible.']).map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
+  document.getElementById('cvTipsList').innerHTML = (aiTips.length ? aiTips : (tips.length ? tips : ['This CV has the essentials. Add measurable results wherever possible.'])).map(tip => `<li>${escapeHtml(tip)}</li>`).join('');
   tipsBox.classList.remove('hidden');
+  downloadCvBtn.disabled = false;
+  printCvBtn.disabled = false;
   document.getElementById('generatedCv').scrollIntoView({behavior:'smooth', block:'start'});
 });
+function getGeneratedCvData(){
+  const readText = id => document.getElementById(id).innerText.trim();
+  return {name:readText('newCvName'), role:readText('newCvRole'), contact:readText('newCvContact'), profile:readText('newCvProfile'), experience:readText('newCvExperience'), education:readText('newCvEducation'), skills:readText('newCvSkills')};
+}
+downloadCvBtn.addEventListener('click', () => {
+  const cv = getGeneratedCvData();
+  const toList = value => value.split(/\n+/).filter(Boolean).map(item => `<li>${escapeHtml(item.replace(/^\s*[•-]\s*/, ''))}</li>`).join('');
+  const documentHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(cv.name)} CV</title><style>body{font-family:Arial,sans-serif;color:#14284b;margin:36px;line-height:1.55}h1{margin:0;color:#1264cf;font-size:27px}h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#1264cf;margin:28px 0 8px;border-bottom:1px solid #d9e3f3;padding-bottom:5px}.role{font-size:16px;color:#506482;margin:3px 0 12px}.contact{font-size:13px;color:#506482}.skills span{display:inline-block;background:#e8f0fe;color:#1264cf;padding:4px 8px;margin:0 5px 5px 0;border-radius:12px;font-size:12px}p,li{font-size:13px}ul{margin:6px 0;padding-left:20px}</style></head><body><h1>${escapeHtml(cv.name)}</h1><p class="role">${escapeHtml(cv.role)}</p><p class="contact">${escapeHtml(cv.contact)}</p><h2>Profile</h2><p>${escapeHtml(cv.profile)}</p><h2>Experience</h2><ul>${toList(cv.experience)}</ul><h2>Education</h2><ul>${toList(cv.education)}</ul><h2>Skills</h2><p class="skills">${cv.skills.split(/\n+/).filter(Boolean).map(skill => `<span>${escapeHtml(skill)}</span>`).join('')}</p></body></html>`;
+  const blob = new Blob(['\ufeff', documentHtml], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const filename = (cv.name || 'generated-cv').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+  link.href = url;
+  link.download = `${filename || 'generated-cv'}-cv.doc`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+printCvBtn.addEventListener('click', () => window.print());
 
 // ---------- Interview Practice ----------
 let interviewSessions = 0;
@@ -719,7 +784,7 @@ const interviewRoot = document.querySelector('#interview .card');
 interviewRoot.outerHTML = `
   <section class="card interview-chat">
     <div class="interview-chat-head"><div><h3>Interview coach</h3><p>Practise a realistic conversation, one answer at a time.</p></div><span class="interview-status" id="chatStatus">Ready to start</span></div>
-    <div class="chat-compose"><label class="field-label" for="chatRole">Role you are preparing for</label><select id="chatRole"><option value="entry-level role">Entry-level role</option><option value="retail assistant">Retail assistant</option><option value="customer service role">Customer service role</option><option value="admin assistant">Admin assistant</option><option value="learnership">Learnership</option></select><div class="chat-actions"><span class="chat-hint">The coach will ask follow-up questions based on your answers.</span><button class="primary" type="button" id="startInterviewBtn">Start interview</button></div></div>
+    <div class="chat-compose"><label class="field-label" for="chatRole">Role you are preparing for</label><input id="chatRole" type="text" list="roleSuggestions" value="entry-level role" placeholder="Type a role, e.g. Junior data analyst"><datalist id="roleSuggestions"><option value="Entry-level role"><option value="Retail assistant"><option value="Customer service representative"><option value="Admin assistant"><option value="Learnership"><option value="Junior data analyst"><option value="Call centre agent"></datalist><div class="chat-actions"><span class="chat-hint">Type your own role or choose a recommendation.</span><button class="primary" type="button" id="startInterviewBtn">Start interview</button></div></div>
     <div class="chat-log" id="chatLog" aria-live="polite"><div class="chat-message ai"><small>AI INTERVIEW COACH</small>Choose a role, then start when you are ready.</div></div>
     <div class="chat-compose"><label class="field-label" for="chatAnswer">Your answer</label><textarea id="chatAnswer" placeholder="Type your answer as if you are speaking to the interviewer." disabled></textarea><div class="chat-actions"><span class="chat-hint" id="chatTurnHint">Your interview has not started.</span><button class="primary" type="button" id="sendAnswerBtn" disabled>Send answer</button></div></div>
     <div class="chat-review" id="chatReview" hidden></div>
@@ -787,7 +852,7 @@ function addChatMessage(kind, text){
 }
 function askNextQuestion(){
   chatTurn++;
-  const role = document.getElementById('chatRole').value;
+  const role = document.getElementById('chatRole').value.trim() || 'entry-level role';
   if(chatTurn >= interviewQuestions.length){ finishInterview(); return; }
   addChatMessage('ai', interviewQuestions[chatTurn](role));
   document.getElementById('chatStatus').textContent = `Question ${chatTurn + 1} of ${interviewQuestions.length}`;
@@ -795,14 +860,18 @@ function askNextQuestion(){
 }
 function finishInterview(){
   const combined = chatAnswers.join(' ').toLowerCase();
+  const wordCount = combined.split(/\s+/).filter(Boolean).length;
+  const actionCount = (combined.match(/\b(i|my)\b/g) || []).length;
+  const outcomeCount = (combined.match(/result|improved|helped|learned|completed|solved/g) || []).length;
   const strengths = [];
   const nextSteps = [];
   if(chatAnswers.length >= 4) strengths.push('You completed a full interview conversation and stayed engaged across several topics.');
-  if(/\b(i|my)\b/.test(combined)) strengths.push('You used personal ownership language, which helps an interviewer understand your contribution.');
-  if(/result|improved|helped|learned|completed|solved/.test(combined)) strengths.push('You included evidence of outcomes in your answers.');
-  if(!/result|improved|helped|learned|completed|solved/.test(combined)) nextSteps.push('End one or two answers with a clear result or what you learned.');
-  if(combined.split(/\s+/).length < 90) nextSteps.push('Add a little more detail to each answer: situation, action and result.');
+  if(actionCount) strengths.push('You used personal ownership language, which helps an interviewer understand your contribution.');
+  if(outcomeCount) strengths.push('You included evidence of outcomes in your answers.');
+  if(!outcomeCount) nextSteps.push('End one or two answers with a clear result or what you learned.');
+  if(wordCount < 90) nextSteps.push('Add a little more detail to each answer: situation, action and result.');
   if(!nextSteps.length) nextSteps.push('Practise saying these answers aloud so they sound natural and confident.');
+  const score = Math.min(100, 30 + chatAnswers.length * 8 + Math.min(25, Math.floor(wordCount / 8)) + (actionCount ? 5 : 0) + (outcomeCount ? 5 : 0));
   document.getElementById('chatAnswer').disabled = true;
   document.getElementById('sendAnswerBtn').disabled = true;
   voiceButton.disabled = true;
@@ -811,9 +880,10 @@ function finishInterview(){
   document.getElementById('chatTurnHint').textContent = 'Start a new interview to practise another role.';
   const review = document.getElementById('chatReview');
   review.hidden = false;
-  review.innerHTML = `<h4>Session review</h4><p><strong>What worked:</strong> ${strengths.join(' ') || 'You showed up and practised, which is the first step.'}</p><p><strong>Focus next:</strong> ${nextSteps.join(' ')}</p>`;
+  review.innerHTML = `<h4>Interview performance report</h4><div class="review-score"><strong>${score}%</strong><span>Based on answer length, personal ownership and examples of outcomes. This is coaching feedback, not an employer assessment.</span></div><div class="review-columns"><div><h5>What you did well</h5><ul>${(strengths.length ? strengths : ['You completed the practice session and answered every question.']).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div><h5>Focus next</h5><ul>${nextSteps.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div>`;
   document.getElementById('progressInterview').textContent = 'Interview practice: ' + (interviewSessions + 1) + ' session' + (interviewSessions ? 's' : '');
   interviewSessions++;
+  review.scrollIntoView({behavior:'smooth', block:'center'});
 }
 document.getElementById('startInterviewBtn').addEventListener('click', () => {
   chatTurn = -1; chatAnswers = [];
